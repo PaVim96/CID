@@ -21,6 +21,11 @@ def train_distill(epoch, train_loader, module_list, criterion_list, optimizer, o
     # set teacher as eval()
     module_list[-1].eval()
 
+    #P.V: 
+    #Criterion_list[0] => Cross Entropy Loss
+    #Criterion_list[1] => KL Divergence 
+    #Criterion_list[2] => Normalized MSE 
+    #Criterion_list[3] => Cosine Loss 
     #criterion_cls = criterion_list[0]
     criterion_kl = criterion_list[1]
     criterion_mse = criterion_list[2]
@@ -75,7 +80,7 @@ def train_distill(epoch, train_loader, module_list, criterion_list, optimizer, o
             feat_t = [f.detach() for f in feat_t]
             
 
-
+        #if init epochs are reached, context is constructed
         if epoch==opt.init_epochs:   
             
             fea_s  = feat_s[opt.hint_layer].detach()
@@ -83,24 +88,31 @@ def train_distill(epoch, train_loader, module_list, criterion_list, optimizer, o
             soft_t = softmax(logit_t/opt.net_T)
             
             for i in range( len(target) ):
+                #soft_t[i][target[i]] => P(c_i | x_j) 
+                #current_num => sum of all P(c_i| x_j)
+                #I think context_new[target[i]] => c_i? 
                 context_new[target[i]] = context_new[target[i]]*( current_num[target[i]]/(current_num[target[i]]+soft_t[i][target[i]]) )+ fea_s[i]*(soft_t[i][target[i]]/(current_num[target[i]]+soft_t[i][target[i]]) )
                 current_num[target[i]]+= soft_t[i][target[i]]
         
-        # loss
         loss_kl = criterion_kl(logit_s, logit_t)
         
         fea_reg = module_list[2]
+        #f_s and f_t are the features of the last layer => sample representations 
         f_s = fea_reg(feat_s[opt.hint_layer])
         f_t = feat_t[opt.hint_layer]
             
+        #Sample Representation Loss
         loss_sample = criterion_mse(f_s, f_t)
-        
+
+
+        #list of sample representations of both student and teacher model
         list_s, list_t = cluster(feat_s[opt.hint_layer], f_t, target, class_num)
             
         involve_class = 0
             
         loss_class=0.0
             
+        #class representation loss
         for k in range( len(list_s) ):
             
             cur_len = len( list_s[k] )
@@ -119,7 +131,12 @@ def train_distill(epoch, train_loader, module_list, criterion_list, optimizer, o
         else:
             loss_class = loss_class/involve_class   
         
-
+        #P.V: 
+        #interventional loss should be KL + P(Y|f_s(x) & sum P(c_i) a_i^s * class representation)
+        #P(Y|f_s(x)) => student prediction => f_s ? 
+        #so disabling interventional loss should be same loss without kl part
+        #question: do we disable KL or not? because its not inherently part of the intervention
+        #just forces the context to be similar 
         loss =  opt.aa*loss_kl + opt.bb * loss_sample + opt.cc * loss_class 
 
         acc1, acc5 = accuracy(logit_s, target, topk=(1, 5))
@@ -151,6 +168,7 @@ def train_distill(epoch, train_loader, module_list, criterion_list, optimizer, o
     print(' * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'
           .format(top1=top1, top5=top5))
     
+    #P.V: Since this does not use context, I guess this does not contain the interventional loss?
     return top1.avg, losses.avg, context_new
 
 
@@ -170,6 +188,10 @@ def train_distill_context(epoch, train_loader, module_list, criterion_list, opti
     current_num = torch.zeros(context.shape[0], dtype=torch.float32)
 
 
+    #Criterion_list[0] => Cross Entropy Loss
+    #Criterion_list[1] => KL Divergence 
+    #Criterion_list[2] => Normalized MSE 
+    #Criterion_list[3] => Cosine Loss
     criterion_cls = criterion_list[0]
     criterion_kl = criterion_list[1]
     criterion_mse = criterion_list[2]
@@ -219,17 +241,22 @@ def train_distill_context(epoch, train_loader, module_list, criterion_list, opti
             context_new[target[i]] = context_new[target[i]]*( current_num[target[i]]/(current_num[target[i]]+soft_t[i][target[i]]) ) + fea_s[i]*(soft_t[i][target[i]]/(current_num[target[i]]+soft_t[i][target[i]]) )
             current_num[target[i]]+=soft_t[i][target[i]]
         
-        
+        #P.V: different to init train START
+
         p = softmax(logit_s.detach()/opt.net_T)
-        
+
+        #P.V: this is: a_i^s * \bar c_i        
         sam_contxt = torch.mm(p, context)
         
+
+        #P.V: if we disable interventional loss, this should not get used as it uses context
         f_new = torch.cat((feat_s[opt.hint_layer], sam_contxt),1)
         
         logit_s_new = model_s_fc_new(f_new)
         
-        
+        #Cross Entropy between sample representation concatenated with context and target 
         loss_cls = criterion_cls(logit_s_new, target)
+        #P.V: different to init train END
         
         loss_kl = criterion_kl(logit_s, logit_t)
         
@@ -267,7 +294,8 @@ def train_distill_context(epoch, train_loader, module_list, criterion_list, opti
         else:
             loss_class = loss_class/involve_class  
 
-
+        #P.V: loss_cls + loss_kl => interventional loss
+        #P.V: disabling interventional loss should just be removing loss_cls + loss_kl (same question as in init train tho)
         loss =  opt.aa*(loss_cls + loss_kl) + opt.bb * loss_sample + opt.cc * loss_class
 
         acc1, acc5 = accuracy(logit_s_new, target, topk=(1, 5))

@@ -227,6 +227,7 @@ def main():
 
         time1 = time.time()
         
+        #context should be the softened logits
         if epoch <= opt.init_epochs:
             train_acc, train_loss, context = train_init(epoch, train_loader, module_list, criterion_list, optimizer, opt)
             context_old = context
