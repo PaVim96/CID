@@ -174,6 +174,10 @@ def main():
         
         #I suppose this is Cs_h * 2 because concatenation
         #Eq. 6 aka 7
+        #TODO: remove, just for debugging and understanding purposes
+        print(Cs_h)
+        print(Cs_h * 2)
+        import ipdb; ipdb.set_trace()
         model_s_fc_new = Reg( Cs_h*2, n_cls)
         
         module_list.append(model_s_fc_new)
