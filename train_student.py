@@ -172,6 +172,8 @@ def main():
 
         _, Cs_h = feat_s[opt.hint_layer].shape
         
+        #I suppose this is Cs_h * 2 because concatenation
+        #Eq. 6 aka 7
         model_s_fc_new = Reg( Cs_h*2, n_cls)
         
         module_list.append(model_s_fc_new)
@@ -180,6 +182,7 @@ def main():
         
         _, Ct_h = feat_t[opt.hint_layer].shape
         
+        #
         Reger_fea = Reg( Cs_h, Ct_h)
         
         module_list.append(Reger_fea)

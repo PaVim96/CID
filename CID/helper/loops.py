@@ -9,9 +9,6 @@ import torch.nn as nn
 from .util import AverageMeter, accuracy
 from CID.helper.util import cluster
 
-
-
-
 def train_distill(epoch, train_loader, module_list, criterion_list, optimizer, opt):
     
     # set modules as train()
@@ -97,6 +94,8 @@ def train_distill(epoch, train_loader, module_list, criterion_list, optimizer, o
         loss_kl = criterion_kl(logit_s, logit_t)
         
         fea_reg = module_list[2]
+        #fea_reg maps feature space of student model to feature space of teacher model
+        #based on FitNet: https://arxiv.org/pdf/1412.6550.pdf
         #f_s and f_t are the features of the last layer => sample representations 
         f_s = fea_reg(feat_s[opt.hint_layer])
         f_t = feat_t[opt.hint_layer]
