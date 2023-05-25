@@ -14,18 +14,18 @@ import torch.nn as nn
 import torch.backends.cudnn as cudnn
 
 
-from models import model_dict
-from models.util import Reg
+from CID.models import model_dict
+from CID.models.util import Reg
 
 from dataset.cifar100 import get_cifar100_dataloaders
 
-from helper.util import adjust_learning_rate
+from CID.helper.util import adjust_learning_rate
 
-from distiller_zoo import KL, Cosine
-from distiller_zoo import NORM_MSE
+from CID.distiller_zoo import KL, Cosine
+from CID.distiller_zoo import NORM_MSE
 
-from helper.loops import train_distill as train_init, validate, validate_st, train_distill_context as train
-from helper.util import set_seed
+from CID.helper.loops import train_distill as train_init, validate, validate_st, train_distill_context as train
+from CID.helper.util import set_seed
 
 
 def parse_option():

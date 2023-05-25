@@ -1,0 +1,6 @@
+save/*
+dataset/__pycache__/*
+data/*
+build/*
+*.egg-info/*
+

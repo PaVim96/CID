@@ -8,10 +8,10 @@ import argparse
 import torch
 import torch.nn as nn
 import torch.backends.cudnn as cudnn
-from models import model_dict
-from models.util import Reg
+from CID.models import model_dict
+from CID.models.util import Reg
 from dataset.cifar100 import get_cifar100_dataloaders
-from helper.loops import validate_st
+from CID.helper.loops import validate_st
 import os
 
 
@@ -58,6 +58,8 @@ def main():
         n_cls = 100
     else:
         raise NotImplementedError(opt.dataset)
+
+
 
     # model
     model_s = model_dict[opt.model_s](num_classes=n_cls)

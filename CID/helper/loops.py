@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 
 from .util import AverageMeter, accuracy
-from helper.util import cluster
+from CID.helper.util import cluster
 
 
 
