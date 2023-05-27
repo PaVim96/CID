@@ -176,16 +176,16 @@ def train_distill(epoch, train_loader, module_list, criterion_list, optimizer, o
     #TODO: this is not needed when not doing interventions
     try:
         context_new = torch.zeros( model_s.fc.weight.shape, dtype=torch.float32).cuda()   
-        current_num = torch.zeros(model_s.fc.weight.shape[0], dtype=torch.float32)
+        current_num = torch.zeros(model_s.fc.weight.shape[0], dtype=torch.float32).cuda()
         class_num = model_s.fc.weight.shape[0]
     except:
         try:
             context_new = torch.zeros( model_s.linear.weight.shape, dtype=torch.float32).cuda()   
-            current_num = torch.zeros(model_s.linear.weight.shape[0], dtype=torch.float32)  
+            current_num = torch.zeros(model_s.linear.weight.shape[0], dtype=torch.float32).cuda()
             class_num = model_s.linear.weight.shape[0]
         except:
             context_new = torch.zeros( model_s.classifier.weight.shape, dtype=torch.float32).cuda()   
-            current_num = torch.zeros(model_s.classifier.weight.shape[0], dtype=torch.float32)  
+            current_num = torch.zeros(model_s.classifier.weight.shape[0], dtype=torch.float32).cuda()
             class_num = model_s.classifier.weight.shape[0]
 
     batch_time = AverageMeter()
@@ -230,7 +230,7 @@ def train_distill(epoch, train_loader, module_list, criterion_list, optimizer, o
                 #soft_t[i][target[i]] => P(c_i | x_j) 
                 #current_num => sum of all P(c_i| x_j)
                 #I think context_new[target[i]] => c_i? 
-                context_new[target[i]] = context_new[target[i]]*( current_num[target[i]]/(current_num[target[i]]+soft_t[i][target[i]]) )+ fea_s[i]*(soft_t[i][target[i]]/(current_num[target[i]]+soft_t[i][target[i]]) )
+                context_new[target[i]] = context_new[target[i]]*( current_num[target[i]]/(current_num[target[i]]+soft_t[i][target[i]]) )+ fea_s[i]*(soft_t[i][target[i]]/(current_num[target[i]]+soft_t[i][target[i]]))
                 current_num[target[i]]+= soft_t[i][target[i]]
         
         loss_kl = criterion_kl(logit_s, logit_t)
@@ -326,7 +326,7 @@ def train_distill_context(epoch, train_loader, module_list, criterion_list, opti
 
     context_new = torch.zeros(context.shape, dtype=torch.float32).cuda()
    
-    current_num = torch.zeros(context.shape[0], dtype=torch.float32)
+    current_num = torch.zeros(context.shape[0], dtype=torch.float32).cuda()
 
 
     #Criterion_list[0] => Cross Entropy Loss
