@@ -3,5 +3,6 @@ dataset/__pycache__/*
 data/*
 build/*
 *.egg-info/*
-CID/helper/__pycache__/*
-
+CID/models
+CID/helper/__pycache__
+__pycache__/

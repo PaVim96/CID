@@ -29,8 +29,8 @@ def train_no_int(epoch, train_loader, module_list, criterion_list, optimizer, op
     
     #criterion_kl = criterion_list[1]
     criterion_cls = criterion_list[0]
-    criterion_mse = criterion_list[2]
-    criterion_sp = criterion_list[3]
+    criterion_mse = criterion_list[1]
+    criterion_sp = criterion_list[2]
     
     softmax = nn.Softmax(dim=1).cuda()
 
@@ -54,6 +54,8 @@ def train_no_int(epoch, train_loader, module_list, criterion_list, optimizer, op
 
     end = time.time()
     class_num = model_s.fc.weight.shape[0]
+
+    import ipdb; ipdb.set_trace()
 
     for idx, data in enumerate(train_loader): 
         input, target, index = data
@@ -514,7 +516,7 @@ def validate(val_loader, model, criterion, opt):
 
     return top1.avg, top5.avg, losses.avg
 
-def validate_st_no_int(val_loader, model, opt, model_fc_new): 
+def validate_st_no_int(val_loader, model, opt): 
     batch_time = AverageMeter()
     
     top1_new = AverageMeter()
@@ -524,7 +526,6 @@ def validate_st_no_int(val_loader, model, opt, model_fc_new):
 
     # switch to evaluate mode
     model.eval()
-    model_fc_new.eval()
 
     with torch.no_grad():
         end = time.time()
