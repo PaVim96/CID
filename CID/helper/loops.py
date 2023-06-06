@@ -6,7 +6,7 @@ import torch
 
 import torch.nn as nn
 
-from .util import AverageMeter, accuracy
+from CID.helper.util import AverageMeter, accuracy
 from CID.helper.util import cluster
 
 
@@ -36,14 +36,14 @@ def train_no_int(epoch, train_loader, module_list, criterion_list, optimizer, op
 
 
     model_s = module_list[0]
-    model_t = module_list[-1]
+    model_t = module_list[2]
 
     #the prediction layer
     #not needed because we dont need to modify the prediction layer
     #model_s_fc_new = module_list[1]
 
     #the mapping layer from student feature space of hint layer to teacher hint layer
-    fea_reg = module_list[2]
+    fea_reg = module_list[1]
 
 
     batch_time = AverageMeter()
@@ -55,7 +55,6 @@ def train_no_int(epoch, train_loader, module_list, criterion_list, optimizer, op
     end = time.time()
     class_num = model_s.fc.weight.shape[0]
 
-    import ipdb; ipdb.set_trace()
 
     for idx, data in enumerate(train_loader): 
         input, target, index = data
@@ -108,7 +107,7 @@ def train_no_int(epoch, train_loader, module_list, criterion_list, optimizer, op
 
 
 
-        softened_logit_s = softmax(logit_s / opt.T)
+        softened_logit_s = softmax(logit_s / opt.net_T)
         loss_cls = criterion_cls(softened_logit_s, target)
 
         #loss = P(Y|X) + Sample Representation Loss + Class Representation Loss
@@ -542,7 +541,7 @@ def validate_st_no_int(val_loader, model, opt):
             
 
             #TODO: not sure if this needs softmax too?
-            #output = softmax(output / opt.T)
+            output = softmax(output / opt.net_T)
             
 
             acc1_new, acc5_new = accuracy(output, target, topk=(1, 5))

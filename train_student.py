@@ -17,7 +17,7 @@ import torch.backends.cudnn as cudnn
 from CID.models import model_dict
 from CID.models.util import Reg
 
-from dataset.cifar100 import get_cifar100_dataloaders
+from dataset.cifar100 import get_cifar_dataloaders
 
 from CID.helper.util import adjust_learning_rate
 
@@ -49,7 +49,7 @@ def parse_option():
     parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
 
     # dataset
-    parser.add_argument('--dataset', type=str, default='cifar100', choices=['cifar100'], help='dataset')
+    parser.add_argument('--dataset', type=str, default='cifar100', choices=['cifar100', 'cifar10'], help='dataset')
 
     # model
     parser.add_argument('--model_s', type=str, default='resnet8',
@@ -61,7 +61,7 @@ def parse_option():
     parser.add_argument('--path_t', type=str, default=None, help='teacher model')
     
     # distillation
-    parser.add_argument('--use_int', type=bool, default=True)
+    parser.add_argument('--use_int', type=bool, default=False)
     parser.add_argument('--trial', type=str, default='1', help='trial id')
 
     parser.add_argument('-a', '--aa', type=float, default=1, help='weight for classification')
@@ -93,8 +93,11 @@ def parse_option():
         opt.lr_decay_epochs.append(int(it))
 
     opt.model_t = get_teacher_name(opt.path_t)
-
-    opt.model_name = 'S:{}_{}_{}_a:{}_b:{}_c:_{}{}'.format(opt.model_s, opt.dataset, opt.use_int,
+    if opt.use_int: 
+        int_str = "INT"
+    else: 
+        int_str = "NO_INT"
+    opt.model_name = 'S:{}_{}_{}_a:{}_b:{}_c:_{}{}'.format(opt.model_s, opt.dataset, int_str,
                         opt.aa, opt.bb, opt.cc, opt.trial)
 
     opt.save_folder = os.path.join(opt.model_path, opt.model_name)
@@ -133,16 +136,19 @@ def main_train_no_int(opt):
     
     set_seed(opt.seed)
 
-
     # dataloader
     if opt.dataset == 'cifar100':
   
-        train_loader, val_loader, n_data = get_cifar100_dataloaders(batch_size=opt.batch_size,
+        train_loader, val_loader, n_data = get_cifar_dataloaders(100, batch_size=opt.batch_size,
                                                                     num_workers=opt.num_workers,
                                                                     is_instance=True)
         n_cls = 100
-    else:
-        raise NotImplementedError(opt.dataset)
+    elif opt.dataset == "cifar10":
+        train_loader, val_loader, n_data = get_cifar_dataloaders(10, batch_size=opt.batch_size,
+                                                                    num_workers=opt.num_workers,
+                                                                    is_instance=True)
+        n_cls = 10
+        
 
     # model
     model_t = load_teacher(opt.path_t, n_cls)
@@ -194,6 +200,10 @@ def main_train_no_int(opt):
     # append teacher after optimizer to avoid weight_decay
     module_list.append(model_t)
 
+    #mod_list[0] => student
+    #mod_list[1] => fea_reg 
+    #mod_list[2] => teacher
+
     if torch.cuda.is_available():
         module_list.cuda()
         criterion_list.cuda()
@@ -212,7 +222,6 @@ def main_train_no_int(opt):
         print("==> training...")
 
         time1 = time.time()
-        
         train_acc, train_loss = train_no_int(epoch, train_loader, module_list, criterion_list, 
                                              optimizer, opt)
         
@@ -223,7 +232,7 @@ def main_train_no_int(opt):
         print('epoch {}, total time {:.2f}'.format(epoch, time2 - time1))
 
       
-        test_acc, tect_acc_top5 = validate_st_no_int(val_loader, model_s, criterion_cls)
+        test_acc, tect_acc_top5 = validate_st_no_int(val_loader, model_s, opt)
 
 
         
@@ -275,12 +284,15 @@ def main_normal_train(opt):
     # dataloader
     if opt.dataset == 'cifar100':
   
-        train_loader, val_loader, n_data = get_cifar100_dataloaders(batch_size=opt.batch_size,
+        train_loader, val_loader, n_data = get_cifar_dataloaders(100, batch_size=opt.batch_size,
                                                                     num_workers=opt.num_workers,
                                                                     is_instance=True)
         n_cls = 100
-    else:
-        raise NotImplementedError(opt.dataset)
+    elif opt.dataset == "cifar10":
+        train_loader, val_loader, n_data = get_cifar_dataloaders(10, batch_size=opt.batch_size,
+                                                                    num_workers=opt.num_workers,
+                                                                    is_instance=True)
+        n_cls = 10
 
     # model
     model_t = load_teacher(opt.path_t, n_cls)
@@ -313,12 +325,9 @@ def main_normal_train(opt):
         
         #I suppose this is Cs_h * 2 because concatenation
         #Eq. 6 aka 7
-<<<<<<< HEAD
-=======
         #TODO: remove, just for debugging and understanding purposes
         print(Cs_h)
         print(Cs_h * 2)
->>>>>>> b3d25d6eb90859f53c8246e3261d36e349e53728
         model_s_fc_new = Reg( Cs_h*2, n_cls)
         
         module_list.append(model_s_fc_new)
@@ -439,4 +448,5 @@ if __name__ == '__main__':
     if opt.use_int:
         main_normal_train(opt)
     else: 
+        print("WITHOUT INTERVENTIONS")
         main_train_no_int(opt)

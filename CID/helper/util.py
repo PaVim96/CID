@@ -37,7 +37,7 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
 
-def accuracy(output, target, topk=(1,)):
+def accuracy(output, target, topk=(1,), returnCorrect = False):
     """Computes the accuracy over the k top predictions for the specified values of k"""
     with torch.no_grad():
         maxk = max(topk)
@@ -46,16 +46,21 @@ def accuracy(output, target, topk=(1,)):
         _, pred = output.topk(maxk, 1, True, True)
         pred = pred.t()
         correct = pred.eq(target.view(1, -1).expand_as(pred))
-
         res = []
+        lstCorrect = []
         for k in topk:
             try:
+                if returnCorrect:
+                    lstCorrect.append(correct)
                 correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
                 res.append(correct_k.mul_(100.0 / batch_size))
             except RuntimeError:
                 correct_k = correct[:k].contiguous().view(-1).float().sum(0, keepdim=True)
                 res.append(correct_k.mul_(100.0 / batch_size))
-        return res
+        if returnCorrect:
+            return res, lstCorrect
+        else: 
+            return res
     
 
 

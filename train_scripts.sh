@@ -3,10 +3,6 @@
 #python train_student.py --path_t './save/models/resnet56_vanilla/ckpt_epoch_240.pth' --model_s resnet20 -NT 4 -a 1 -b 10 -c 1
 #python train_student.py --path_t './save/models/ResNet50_vanilla/ckpt_epoch_240.pth' --model_s MobileNetV2 -NT 4 -a 1.0 -b 33.0 -c 0.1
 #python train_student.py --path_t './save/models/ResNet50_vanilla/ckpt_epoch_240.pth' --model_s vgg8 -NT 4 -a 1.0 -b 8 -c 2.0
-<<<<<<< HEAD
-python3 train_student.py --path_t "./save/models/wrn_40_4_vanilla/ckpt_epoch_240.pth" --model_s wrn_16_2 -NT 4 -a 1 -b 55 -c 0.1
 
-=======
-
-python3 train_student.py --path_t './save/models/wrn_40_4_vanilla/ckpt_epoch_240.pth' --use_int False --model_s wrn_16_2 -NT 4 -a 1 -b 55 -c 0.1
->>>>>>> b3d25d6eb90859f53c8246e3261d36e349e53728
+#python3 train_student.py --path_t './save/models/wrn_40_4_vanilla/ckpt_epoch_240.pth' --model_s wrn_16_2 -NT 4 -a 1 -b 55 -c 0.1
+python3 train_student.py --path_t './save/models/wrn_40_4_vanilla/ckpt_epoch_240.pth' --dataset cifar10 --model_s wrn_16_2 -NT 4 -a 1 -b 55 -c 0.1

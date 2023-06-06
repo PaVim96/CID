@@ -1,0 +1,1 @@
+python3 train_teacher.py --dataset cifar10 --model_t wrn_40_4 
