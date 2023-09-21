@@ -23,11 +23,11 @@ def parse_option():
     parser = argparse.ArgumentParser('Arguments for training')
 
     parser.add_argument('--print_freq', type=int, default=100, help='print frequency')
-    parser.add_argument('--tb_freq', type=int, default=500, help='tb frequency')
-    parser.add_argument('--save_freq', type=int, default=240, help='save frequency')
+    parser.add_argument('--tb_freq', type=int, default=50, help='tb frequency')
+    parser.add_argument('--save_freq', type=int, default=100, help='save frequency')
     parser.add_argument('--batch_size', type=int, default=64, help='batch_size')
     parser.add_argument('--num_workers', type=int, default=8, help='num of workers to use')
-    parser.add_argument('--epochs', type=int, default=500, help='number of training epochs')
+    parser.add_argument('--epochs', type=int, default=100, help='number of training epochs')
 
     # optimization
     parser.add_argument('--learning_rate', type=float, default=0.05, help='learning rate')
@@ -223,9 +223,9 @@ def main_train():
                 'model': model.state_dict(),
                 'best_acc': best_acc,
             }
-            save_file = os.path.join(opt.save_folder, '{}_best.pth'.format(opt.model_t))
+            save_file = os.path.join(opt.save_folder, '{}_e{}_best.pth'.format(opt.model_t, epoch))
             print('saving the best model!')
-            torch.save(state, save_file)
+            torch.save(state, save_file )
 
         # regular saving
         if epoch % opt.save_freq == 0:
@@ -237,7 +237,7 @@ def main_train():
             }
             save_file = os.path.join(opt.save_folder, 'ckpt_epoch_{epoch}.pth'.format(epoch=epoch))
             torch.save(state, save_file)
-
+ 
     # This best accuracy is only for printing purpose.
     print('best accuracy:', best_acc.cpu().numpy())
 

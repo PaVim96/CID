@@ -30,19 +30,18 @@ from CID.helper.util import set_seed
 
 
 def parse_option():
-
     parser = argparse.ArgumentParser('Arguments for training')
 
-    parser.add_argument('--print_freq', type=int, default=100, help='print frequency')
-    parser.add_argument('--tb_freq', type=int, default=500, help='tb frequency')
-    parser.add_argument('--save_freq', type=int, default=240, help='save frequency')
+    parser.add_argument('--print_freq', type=int, default=50, help='print frequency')
+    parser.add_argument('--tb_freq', type=int, default=100, help='tb frequency')
+    parser.add_argument('--save_freq', type=int, default=50, help='save frequency')
     parser.add_argument('--batch_size', type=int, default=64, help='batch_size')
     parser.add_argument('--num_workers', type=int, default=8, help='num of workers to use')
-    parser.add_argument('--epochs', type=int, default=240, help='number of training epochs')
-    parser.add_argument('--init_epochs', type=int, default=20, help='init training for methods')
+    parser.add_argument('--epochs', type=int, default=100, help='number of training epochs')
+    parser.add_argument('--init_epochs', type=int, default=10, help='init training for methods')
 
     # optimization
-    parser.add_argument('--learning_rate', type=float, default=0.05, help='learning rate')
+    parser.add_argument('--learning_rate', type=float, default=0.003, help='learning rate')
     parser.add_argument('--lr_decay_epochs', type=str, default='150,180,210', help='where to decay lr, can be a list')
     parser.add_argument('--lr_decay_rate', type=float, default=0.1, help='decay rate for learning rate')
     parser.add_argument('--weight_decay', type=float, default=5e-4, help='weight decay')
@@ -61,7 +60,7 @@ def parse_option():
     parser.add_argument('--path_t', type=str, default=None, help='teacher model')
     
     # distillation
-    parser.add_argument('--use_int', type=bool, default=False)
+    parser.add_argument('--use_int', default=False, action="store_true", help="Whether to use Interventions")
     parser.add_argument('--trial', type=str, default='1', help='trial id')
 
     parser.add_argument('-a', '--aa', type=float, default=1, help='weight for classification')
@@ -107,14 +106,20 @@ def parse_option():
     return opt
 
 
-def get_teacher_name(model_path):
-    """parse teacher name"""
-    segments = model_path.split('/')[-2].split('_')
-    if segments[0] != 'wrn':
-        return segments[0]
-    else:
-        return segments[0] + '_' + segments[1] + '_' + segments[2]
+#def get_teacher_name(model_path):
+#    """parse teacher name"""
+#    segments = model_path.split('/')[-2].split('_')
+#    if segments[0] != 'wrn':
+#        return segments[0]
+#    else:
+#        return segments[0] + '_' + segments[1] + '_' + segments[2]
 
+
+def get_teacher_name(model_path): 
+    for key in model_dict.keys(): 
+        if key in model_path.lower(): 
+            return key
+    raise ValueError("Teacher model architecture not found in the path, please rename")
 
 def load_teacher(model_path, n_cls):
     print('==> loading teacher model')
@@ -149,7 +154,6 @@ def main_train_no_int(opt):
                                                                     is_instance=True)
         n_cls = 10
         
-
     # model
     model_t = load_teacher(opt.path_t, n_cls)
     model_s = model_dict[opt.model_s](num_classes=n_cls)
@@ -243,7 +247,7 @@ def main_train_no_int(opt):
                 'model': model_s.state_dict(),
                 'best_acc': best_acc,
             }
-            save_file = os.path.join(opt.save_folder, '{}_best.pth'.format(opt.model_s))
+            save_file = os.path.join(opt.save_folder, '{}_best_e{}.pth'.format(opt.model_s, epoch))
             print('saving the best model!')
             torch.save(state, save_file)
 
@@ -412,7 +416,7 @@ def main_normal_train(opt):
                 'context_old': context_old,
                 'best_acc': best_acc,
             }
-            save_file = os.path.join(opt.save_folder, '{}_best.pth'.format(opt.model_s))
+            save_file = os.path.join(opt.save_folder, '{}_best_e{}.pth'.format(opt.model_s, epoch))
             print('saving the best model!')
             torch.save(state, save_file)
 

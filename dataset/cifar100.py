@@ -6,7 +6,7 @@ from torchvision import datasets, transforms
 from PIL import Image
 import dataset.spurious_feature as sf
 from copy import deepcopy
-
+import random
 
 
 def get_data_folder():
@@ -66,7 +66,39 @@ class BinaryCIFAR(datasets.CIFAR10):
         else: 
             return img, target
 
-            
+class CIFAR10InstanceSpurious(datasets.CIFAR10):
+    """CIFAR10Instance Dataset.
+    """
+    def __init__(self, alpha = 0.5, **kwargs): 
+        #alpha determines percentage of training samples that are grayscale vs color-based
+        self.alpha = alpha
+        self.is_instance = kwargs.pop("is_instance")
+
+        super().__init__(**kwargs)
+        self.inject_num = int(len(self.data) * alpha)
+        self.injected_idxs = random.sample(range(len(self.dataset)), self.inject_num)
+        if self.train: 
+            self.data = sf.batch_to_grayscale(self.data, self.injected_idxs)
+
+    def __getitem__(self, index):
+        img, target = self.data[index], self.targets[index]
+        """ else:
+            img, target = self.test_data[index], self.test_labels[index] """
+
+        # doing this so that it is consistent with all other datasets
+        # to return a PIL Image
+        img = Image.fromarray(img)
+
+        if self.transform is not None:
+            img = self.transform(img)
+
+        if self.target_transform is not None:
+            target = self.target_transform(target)
+
+        if self.is_instance:
+            return img, target, index
+        else: 
+            return img, target    
 
 class CIFAR10Instance(datasets.CIFAR10):
     """CIFAR10Instance Dataset.
@@ -122,7 +154,11 @@ class CIFAR100Instance(datasets.CIFAR100):
             return img, target, index
         else: 
             return img, target
-
+def get_mean_std_norm(num_classes): 
+    if num_classes == 100: 
+        return (0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761)
+    elif num_classes == 10: 
+        return (0.4914, 0.4822, 0.4465), (0.2470, 0.2435, 0.2616)
 
 def get_cifar_dataloaders(num_classes, batch_size=128, num_workers=8, is_instance=False, is_binary = False, spurious_args = None):
     """
@@ -130,15 +166,16 @@ def get_cifar_dataloaders(num_classes, batch_size=128, num_workers=8, is_instanc
     """
     data_folder = get_data_folder()
 
+    mean, std = get_mean_std_norm(num_classes)
     train_transform = transforms.Compose([
         transforms.RandomCrop(32, padding=4),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
-        transforms.Normalize((0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761)),
+        transforms.Normalize(mean, std),
     ])
     test_transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize((0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761)),
+        transforms.Normalize(mean, std),
     ])
 
     if num_classes == 100: 

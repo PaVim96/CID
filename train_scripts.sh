@@ -5,4 +5,5 @@
 #python train_student.py --path_t './save/models/ResNet50_vanilla/ckpt_epoch_240.pth' --model_s vgg8 -NT 4 -a 1.0 -b 8 -c 2.0
 
 #python3 train_student.py --path_t './save/models/wrn_40_4_vanilla/ckpt_epoch_240.pth' --model_s wrn_16_2 -NT 4 -a 1 -b 55 -c 0.1
-python3 train_student.py --path_t './save/models/wrn_40_4_vanilla/ckpt_epoch_240.pth' --dataset cifar10 --model_s wrn_16_2 -NT 4 -a 1 -b 55 -c 0.1
+python3 train_student.py --path_t '/home/patrick/Desktop/CID/save/teacher_model/S:wrn_40_4_cifar10_1' --dataset cifar10 --model_s wrn_16_2 -NT 4 -a 1 -b 55 -c 0.1 --use_int 
+

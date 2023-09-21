@@ -58,7 +58,6 @@ def train_no_int(epoch, train_loader, module_list, criterion_list, optimizer, op
 
     for idx, data in enumerate(train_loader): 
         input, target, index = data
-        
         data_time.update(time.time() - end)
 
         input = input.float()
@@ -70,10 +69,10 @@ def train_no_int(epoch, train_loader, module_list, criterion_list, optimizer, op
         preact = False
 
         feat_s, logit_s = model_s(input, is_feat=True, preact=preact)
-        
         with torch.no_grad():
             feat_t, _ = model_t(input, is_feat=True, preact=preact)
             feat_t = [f.detach() for f in feat_t]
+
 
         f_s = fea_reg(feat_s[opt.hint_layer])
         f_t = feat_t[opt.hint_layer]
@@ -106,10 +105,8 @@ def train_no_int(epoch, train_loader, module_list, criterion_list, optimizer, op
             loss_class = loss_class/involve_class   
 
 
-
         softened_logit_s = softmax(logit_s / opt.net_T)
         loss_cls = criterion_cls(softened_logit_s, target)
-
         #loss = P(Y|X) + Sample Representation Loss + Class Representation Loss
         loss = opt.aa * loss_cls +  opt.bb * loss_sample + opt.cc * loss_class
         
@@ -127,7 +124,6 @@ def train_no_int(epoch, train_loader, module_list, criterion_list, optimizer, op
         # ===================meters=====================
         batch_time.update(time.time() - end)
         end = time.time()
-
         # print info
         if idx % opt.print_freq == 0:
             print('Epoch: [{0}][{1}/{2}]\t'
@@ -488,8 +484,9 @@ def validate(val_loader, model, criterion, opt):
 
     with torch.no_grad():
         end = time.time()
-        for idx, (input, target) in enumerate(val_loader):
-
+        for batch_idx, data in enumerate(val_loader):
+            input = data[0]
+            target = data[1]
             input = input.float()
             if torch.cuda.is_available():
                 input = input.cuda()
@@ -528,8 +525,9 @@ def validate_st_no_int(val_loader, model, opt):
 
     with torch.no_grad():
         end = time.time()
-        for idx, (input, target) in enumerate(val_loader):
-
+        for idx, data in enumerate(val_loader):
+            input = data[0]
+            target = data[1]
             input = input.float()
             if torch.cuda.is_available():
                 input = input.cuda()
@@ -574,8 +572,9 @@ def validate_st(val_loader, model, criterion, opt, context, model_fc_new):
 
     with torch.no_grad():
         end = time.time()
-        for idx, (input, target) in enumerate(val_loader):
-
+        for idx, data in enumerate(val_loader):
+            input = data[0] 
+            target = data[1]
             input = input.float()
             if torch.cuda.is_available():
                 input = input.cuda()
