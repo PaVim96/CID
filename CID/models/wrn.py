@@ -175,8 +175,8 @@ if __name__ == '__main__':
 
     x = torch.randn(2, 3, 32, 32)
     net = wrn_40_2(num_classes=100)
-    feats, logit = net(x, is_feat=True, preact=True)
-
+    feats, logit = net(x, is_feat=True, preact=False)
+    import ipdb; ipdb.set_trace()
     for f in feats:
         print(f.shape, f.min().item())
     print(logit.shape)

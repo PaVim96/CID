@@ -10,7 +10,7 @@ import torch.nn as nn
 import torch.backends.cudnn as cudnn
 from CID.models import model_dict
 from CID.models.util import Reg
-from dataset.cifar100 import get_cifar100_dataloaders
+from dataset.cifar100 import get_cifar_dataloaders
 from CID.helper.loops import validate_st
 import os
 
@@ -52,7 +52,7 @@ def main():
     # dataloader
     if opt.dataset == 'cifar100':
   
-        _, val_loader, n_data = get_cifar100_dataloaders(batch_size=opt.batch_size,
+        _, val_loader, n_data = get_cifar_dataloaders(100, batch_size=opt.batch_size,
                                                          num_workers=opt.num_workers,
                                                          is_instance=True)
         n_cls = 100
@@ -86,7 +86,6 @@ def main():
         context = context.cuda()
         criterion_cls.cuda()
         cudnn.benchmark = True
-        
         
     test_acc, tect_acc_top5 = validate_st(val_loader, model_s, criterion_cls, opt, context, model_s_fc_new)
 
