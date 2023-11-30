@@ -173,13 +173,12 @@ def wrn_16_1(**kwargs):
 if __name__ == '__main__':
     import torch
 
-    x = torch.randn(2, 3, 32, 32)
-    net = wrn_40_2(num_classes=100)
+    x = torch.randn(2, 3, 128, 128)
+    net = wrn_16_1(num_classes=3)
     feats, logit = net(x, is_feat=True, preact=False)
-    import ipdb; ipdb.set_trace()
     for f in feats:
         print(f.shape, f.min().item())
-    print(logit.shape)
+    import ipdb; ipdb.set_trace()
 
     for m in net.get_bn_before_relu():
         if isinstance(m, nn.BatchNorm2d):

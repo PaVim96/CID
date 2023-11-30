@@ -70,7 +70,7 @@ def train_no_int(epoch, train_loader, module_list, criterion_list, optimizer, op
 
         feat_s, logit_s = model_s(input, is_feat=True, preact=preact)
         with torch.no_grad():
-            feat_t, logit_t = model_t(input, is_feat=True, preact=preact)
+            feat_t, _ = model_t(input, is_feat=True, preact=preact)
             feat_t = [f.detach() for f in feat_t]
 
 
@@ -78,6 +78,7 @@ def train_no_int(epoch, train_loader, module_list, criterion_list, optimizer, op
         f_t = feat_t[opt.hint_layer]
 
         loss_sample = criterion_mse(f_s, f_t)
+        
         #list of sample representations of both student and teacher model
         list_s, list_t = cluster(feat_s[opt.hint_layer], f_t, target, class_num)
             
@@ -105,9 +106,10 @@ def train_no_int(epoch, train_loader, module_list, criterion_list, optimizer, op
             loss_class = loss_class/involve_class   
 
 
-        loss_cls = criterion_kl(logit_s, logit_t)
+        softened_logit_s = softmax(logit_s / opt.net_T)
+        loss_cls = criterion_cls(softened_logit_s, target)
         #loss = P(Y|X) + Sample Representation Loss + Class Representation Loss
-        loss = opt.aa * loss_kl +  opt.bb * loss_sample + opt.cc * loss_class
+        loss = opt.aa * loss_cls +  opt.bb * loss_sample + opt.cc * loss_class
         
 
         acc1, acc5 = accuracy(logit_s, target, topk=(1, 5))
@@ -171,17 +173,17 @@ def train_distill(epoch, train_loader, module_list, criterion_list, optimizer, o
 
     #TODO: this is not needed when not doing interventions
     try:
-        context_new = torch.zeros( model_s.fc.weight.shape, dtype=torch.float32).cuda()   
-        current_num = torch.zeros(model_s.fc.weight.shape[0], dtype=torch.float32).cuda()
+        context_new = torch.zeros( model_t.fc.weight.shape, dtype=torch.float32).cuda()   
+        current_num = torch.zeros(model_t.fc.weight.shape[0], dtype=torch.float32).cuda()
         class_num = model_s.fc.weight.shape[0]
     except:
         try:
-            context_new = torch.zeros( model_s.linear.weight.shape, dtype=torch.float32).cuda()   
-            current_num = torch.zeros(model_s.linear.weight.shape[0], dtype=torch.float32).cuda()
+            context_new = torch.zeros( model_t.linear.weight.shape, dtype=torch.float32).cuda()   
+            current_num = torch.zeros(model_t.linear.weight.shape[0], dtype=torch.float32).cuda()
             class_num = model_s.linear.weight.shape[0]
         except:
-            context_new = torch.zeros( model_s.classifier.weight.shape, dtype=torch.float32).cuda()   
-            current_num = torch.zeros(model_s.classifier.weight.shape[0], dtype=torch.float32).cuda()
+            context_new = torch.zeros( model_t.classifier.weight.shape, dtype=torch.float32).cuda()   
+            current_num = torch.zeros(model_t.classifier.weight.shape[0], dtype=torch.float32).cuda()
             class_num = model_s.classifier.weight.shape[0]
 
     batch_time = AverageMeter()
@@ -191,7 +193,8 @@ def train_distill(epoch, train_loader, module_list, criterion_list, optimizer, o
     top5 = AverageMeter()
 
     end = time.time()
-    
+
+    fea_context = module_list[3]
     for idx, data in enumerate(train_loader):
   
         input, target, index = data
@@ -212,13 +215,15 @@ def train_distill(epoch, train_loader, module_list, criterion_list, optimizer, o
             feat_t, logit_t = model_t(input, is_feat=True, preact=preact)
             feat_t = [f.detach() for f in feat_t]
             
-
+        f_t = feat_t[opt.hint_layer]
         #if init epochs are reached, context is constructed
         if epoch==opt.init_epochs:   
             
-            fea_s  = feat_s[opt.hint_layer].detach()
+            #fea_s  = feat_s[opt.hint_layer].detach()
+            fea_t = feat_t[opt.hint_layer]
             
-            soft_t = softmax(logit_t/opt.net_T)
+
+            soft_s_tst = softmax(logit_s / opt.net_T).detach()
             
 
             #not needed when no interventions are used
@@ -226,9 +231,11 @@ def train_distill(epoch, train_loader, module_list, criterion_list, optimizer, o
                 #soft_t[i][target[i]] => P(c_i | x_j) 
                 #current_num => sum of all P(c_i| x_j)
                 #I think context_new[target[i]] => c_i? 
-                context_new[target[i]] = context_new[target[i]]*( current_num[target[i]]/(current_num[target[i]]+soft_t[i][target[i]]) )+ fea_s[i]*(soft_t[i][target[i]]/(current_num[target[i]]+soft_t[i][target[i]]))
-                current_num[target[i]]+= soft_t[i][target[i]]
-        
+                
+                context_new[target[i]] = context_new[target[i]]*( current_num[target[i]]/(current_num[target[i]]+soft_s_tst[i][target[i]]) )+ fea_t[i]*(soft_s_tst[i][target[i]]/(current_num[target[i]]+soft_s_tst[i][target[i]]))
+                current_num[target[i]]+= soft_s_tst[i][target[i]]
+
+
         loss_kl = criterion_kl(logit_s, logit_t)
         
         fea_reg = module_list[2]
@@ -236,7 +243,6 @@ def train_distill(epoch, train_loader, module_list, criterion_list, optimizer, o
         #based on FitNet: https://arxiv.org/pdf/1412.6550.pdf
         #f_s and f_t are the features of the last layer => sample representations 
         f_s = fea_reg(feat_s[opt.hint_layer])
-        f_t = feat_t[opt.hint_layer]
             
         #Sample Representation Loss
         loss_sample = criterion_mse(f_s, f_t)
@@ -306,6 +312,7 @@ def train_distill(epoch, train_loader, module_list, criterion_list, optimizer, o
           .format(top1=top1, top5=top5))
     
     #P.V: Since this does not use context, I guess this does not contain the interventional loss?
+    assert context_new.shape[1] == 256
     return top1.avg, losses.avg, context_new
 
 
@@ -319,10 +326,17 @@ def train_distill_context(epoch, train_loader, module_list, criterion_list, opti
     # set teacher as eval()
     module_list[-1].eval()
 
-
-    context_new = torch.zeros(context.shape, dtype=torch.float32).cuda()
-   
-    current_num = torch.zeros(context.shape[0], dtype=torch.float32).cuda()
+    model_t = module_list[-1]
+    try:
+        context_new = torch.zeros( model_t.fc.weight.shape, dtype=torch.float32).cuda()   
+        current_num = torch.zeros(model_t.fc.weight.shape[0], dtype=torch.float32).cuda()
+    except:
+        try:
+            context_new = torch.zeros( model_t.linear.weight.shape, dtype=torch.float32).cuda()   
+            current_num = torch.zeros(model_t.linear.weight.shape[0], dtype=torch.float32).cuda()
+        except:
+            context_new = torch.zeros( model_t.classifier.weight.shape, dtype=torch.float32).cuda()   
+            current_num = torch.zeros(model_t.classifier.weight.shape[0], dtype=torch.float32).cuda()
 
 
     #Criterion_list[0] => Cross Entropy Loss
@@ -339,7 +353,6 @@ def train_distill_context(epoch, train_loader, module_list, criterion_list, opti
 
     model_s = module_list[0]
     model_s_fc_new = module_list[1]
-    model_t = module_list[-1]
 
     batch_time = AverageMeter()
     data_time = AverageMeter()
@@ -348,6 +361,10 @@ def train_distill_context(epoch, train_loader, module_list, criterion_list, opti
     top5 = AverageMeter()
 
     end = time.time()
+
+    fea_context = module_list[3]
+    
+    context_old = context.detach()
     
     for idx, data in enumerate(train_loader):
   
@@ -370,21 +387,27 @@ def train_distill_context(epoch, train_loader, module_list, criterion_list, opti
             feat_t, logit_t = model_t(input, is_feat=True, preact=preact)
             feat_t = [f.detach() for f in feat_t]
         
-        fea_s  = feat_s[opt.hint_layer].detach()
+        #fea_s  = feat_s[opt.hint_layer].detach()
         
-        soft_t = softmax(logit_t/opt.net_T)
+        #soft_t = softmax(logit_t/opt.net_T)
         
+        f_t = feat_t[opt.hint_layer].detach()
 
         #TODO: not needed when no interventions are used
         for i in range( len(target) ):
-            context_new[target[i]] = context_new[target[i]]*( current_num[target[i]]/(current_num[target[i]]+soft_t[i][target[i]]) ) + fea_s[i]*(soft_t[i][target[i]]/(current_num[target[i]]+soft_t[i][target[i]]) )
-            current_num[target[i]]+=soft_t[i][target[i]]
+            soft_s = softmax(logit_s / opt.net_T).detach()
+            context_new[target[i]]  = context_new[target[i]]*( current_num[target[i]]/(current_num[target[i]]+soft_s[i][target[i]]) ) + f_t[i]*(soft_s[i][target[i]]/(current_num[target[i]]+soft_s[i][target[i]]) )
+            current_num[target[i]] += soft_s[i][target[i]]
         
+
         #P.V: different to init train START
 
         p = softmax(logit_s.detach()/opt.net_T)
+        #P.V: this is: a_i^s * \bar c_i     
 
-        #P.V: this is: a_i^s * \bar c_i        
+
+        assert context.shape[1] == 256
+        context = fea_context(context)
         sam_contxt = torch.mm(p, context)
         
 
@@ -404,7 +427,6 @@ def train_distill_context(epoch, train_loader, module_list, criterion_list, opti
         
         fea_reg = module_list[2]
         f_s = fea_reg(feat_s[opt.hint_layer])
-        f_t = feat_t[opt.hint_layer]
             
         loss_sample = criterion_mse(f_s, f_t)
             
@@ -447,6 +469,9 @@ def train_distill_context(epoch, train_loader, module_list, criterion_list, opti
         loss.backward()
         optimizer.step()
 
+        #hacky way to restore old dimensionality
+        context = context_old
+
         # ===================meters=====================
         batch_time.update(time.time() - end)
         end = time.time()
@@ -466,9 +491,9 @@ def train_distill_context(epoch, train_loader, module_list, criterion_list, opti
     print(' * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'
           .format(top1=top1, top5=top5))
     
-    
-    context_new = opt.cu*context + (1-opt.cu)*context_new
 
+    assert context_new.shape[1] == 256
+    context_new = opt.cu*context + (1-opt.cu)*context_new
     return top1.avg, losses.avg, context_new
 
 def validate(val_loader, model, criterion, opt):
@@ -556,7 +581,7 @@ def validate_st_no_int(val_loader, model, opt):
 
 
 
-def validate_st(val_loader, model, criterion, opt, context, model_fc_new):
+def validate_st(val_loader, model, criterion, opt, context, model_fc_new, Reg_context):
     """validation"""
     batch_time = AverageMeter()
     
@@ -568,7 +593,8 @@ def validate_st(val_loader, model, criterion, opt, context, model_fc_new):
     # switch to evaluate mode
     model.eval()
     model_fc_new.eval()
-
+    assert context.shape[1] == 256
+    context = Reg_context(context).detach()
     with torch.no_grad():
         end = time.time()
         for idx, data in enumerate(val_loader):
@@ -582,13 +608,11 @@ def validate_st(val_loader, model, criterion, opt, context, model_fc_new):
 
             # compute output
             feat, output  = model(input, is_feat=True, preact=False)
-            
             p = softmax(output/opt.net_T)
-        
             sam_contxt = torch.mm(p, context)
-        
+            
             f_new = torch.cat((feat[opt.hint_layer], sam_contxt),1)
-        
+            
             output_new = model_fc_new(f_new)            
             
 

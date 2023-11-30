@@ -25,7 +25,7 @@ from CID.distiller_zoo import KL, Cosine
 from CID.distiller_zoo import NORM_MSE
 
 from CID.helper.loops import train_no_int
-from CID.helper.loops import train_distill as train_init, validate, validate_st, validate_st_no_int,train_distill_context as train
+from CID.helper.loops_teacherbased import train_distill as train_init, validate, validate_st, validate_st_no_int,train_distill_context as train
 from CID.helper.util import set_seed
 
 
@@ -172,7 +172,7 @@ def main_train_no_int(opt):
     
     trainable_list.append(model_s)
 
-    criterion_kl = KL(opt.net_T)
+    criterion_cls = nn.CrossEntropyLoss()
     criterion_mse = NORM_MSE()
 
     criterion_cc = Cosine() 
@@ -182,14 +182,17 @@ def main_train_no_int(opt):
         
     #
     Reger_fea = Reg( Cs_h, Ct_h)
+    Reger_context = Reg(Ct_h, Cs_h)
         
     module_list.append(Reger_fea)
+    module_list.append(Reger_context)
         
     trainable_list2.append(Reger_fea)
+    trainable_list2.append(Reger_context)
 
 
     criterion_list = nn.ModuleList([])
-    criterion_list.append(criterion_kl)
+    criterion_list.append(criterion_cls)
     criterion_list.append(criterion_mse)
     criterion_list.append(criterion_cc)
 
@@ -342,10 +345,13 @@ def main_normal_train(opt):
         
         #
         Reger_fea = Reg( Cs_h, Ct_h)
+
+        Reg_context = Reg(Ct_h, Cs_h)
         
         module_list.append(Reger_fea)
-        
+        module_list.append(Reg_context)
         trainable_list2.append(Reger_fea)
+        trainable_list2.append(Reg_context)
         
     else:
         raise NotImplementedError(opt.distill)
@@ -402,8 +408,7 @@ def main_normal_train(opt):
         time2 = time.time()
         print('epoch {}, total time {:.2f}'.format(epoch, time2 - time1))
 
-      
-        test_acc, tect_acc_top5 = validate_st(val_loader, model_s, criterion_cls, opt, context_old, model_s_fc_new)
+        test_acc, tect_acc_top5 = validate_st(val_loader, model_s, criterion_cls, opt, context_old, model_s_fc_new, Reg_context)
 
 
         
