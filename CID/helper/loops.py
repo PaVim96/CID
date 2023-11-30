@@ -9,7 +9,7 @@ import torch.nn as nn
 from CID.helper.util import AverageMeter, accuracy
 from CID.helper.util import cluster
 
-
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 def train_no_int(epoch, train_loader, module_list, criterion_list, optimizer, opt): 
@@ -32,7 +32,7 @@ def train_no_int(epoch, train_loader, module_list, criterion_list, optimizer, op
     criterion_mse = criterion_list[1]
     criterion_sp = criterion_list[2]
     
-    softmax = nn.Softmax(dim=1).cuda()
+    softmax = nn.Softmax(dim=1).to(device)
 
 
     model_s = module_list[0]
@@ -62,8 +62,8 @@ def train_no_int(epoch, train_loader, module_list, criterion_list, optimizer, op
 
         input = input.float()
         if torch.cuda.is_available():
-            input = input.cuda()
-            target = target.cuda()
+            input = input.to(device)
+            target = target.to(device)
   
         # ===================forward=====================
         preact = False
@@ -162,7 +162,7 @@ def train_distill(epoch, train_loader, module_list, criterion_list, optimizer, o
     criterion_mse = criterion_list[2]
     criterion_sp = criterion_list[3]
     
-    softmax = nn.Softmax(dim=1).cuda()
+    softmax = nn.Softmax(dim=1).to(device)
 
 
     model_s = module_list[0]
@@ -170,18 +170,19 @@ def train_distill(epoch, train_loader, module_list, criterion_list, optimizer, o
     
 
     #TODO: this is not needed when not doing interventions
+    import ipdb; ipdb.set_trace()
     try:
-        context_new = torch.zeros( model_s.fc.weight.shape, dtype=torch.float32).cuda()   
-        current_num = torch.zeros(model_s.fc.weight.shape[0], dtype=torch.float32).cuda()
+        context_new = torch.zeros( model_s.fc.weight.shape, dtype=torch.float32).to(device)   
+        current_num = torch.zeros(model_s.fc.weight.shape[0], dtype=torch.float32).to(device)
         class_num = model_s.fc.weight.shape[0]
     except:
         try:
-            context_new = torch.zeros( model_s.linear.weight.shape, dtype=torch.float32).cuda()   
-            current_num = torch.zeros(model_s.linear.weight.shape[0], dtype=torch.float32).cuda()
+            context_new = torch.zeros( model_s.linear.weight.shape, dtype=torch.float32).to(device)   
+            current_num = torch.zeros(model_s.linear.weight.shape[0], dtype=torch.float32).to(device)
             class_num = model_s.linear.weight.shape[0]
         except:
-            context_new = torch.zeros( model_s.classifier.weight.shape, dtype=torch.float32).cuda()   
-            current_num = torch.zeros(model_s.classifier.weight.shape[0], dtype=torch.float32).cuda()
+            context_new = torch.zeros( model_s.classifier.weight.shape, dtype=torch.float32).to(device)   
+            current_num = torch.zeros(model_s.classifier.weight.shape[0], dtype=torch.float32).to(device)
             class_num = model_s.classifier.weight.shape[0]
 
     batch_time = AverageMeter()
@@ -200,8 +201,8 @@ def train_distill(epoch, train_loader, module_list, criterion_list, optimizer, o
 
         input = input.float()
         if torch.cuda.is_available():
-            input = input.cuda()
-            target = target.cuda()
+            input = input.to(device)
+            target = target.to(device)
   
         # ===================forward=====================
         preact = False
@@ -226,6 +227,7 @@ def train_distill(epoch, train_loader, module_list, criterion_list, optimizer, o
                 #soft_t[i][target[i]] => P(c_i | x_j) 
                 #current_num => sum of all P(c_i| x_j)
                 #I think context_new[target[i]] => c_i? 
+                import ipdb; ipdb.set_trace()
                 context_new[target[i]] = context_new[target[i]]*( current_num[target[i]]/(current_num[target[i]]+soft_t[i][target[i]]) )+ fea_s[i]*(soft_t[i][target[i]]/(current_num[target[i]]+soft_t[i][target[i]]))
                 current_num[target[i]]+= soft_t[i][target[i]]
         
@@ -320,9 +322,9 @@ def train_distill_context(epoch, train_loader, module_list, criterion_list, opti
     module_list[-1].eval()
 
 
-    context_new = torch.zeros(context.shape, dtype=torch.float32).cuda()
+    context_new = torch.zeros(context.shape, dtype=torch.float32).to(device)
    
-    current_num = torch.zeros(context.shape[0], dtype=torch.float32).cuda()
+    current_num = torch.zeros(context.shape[0], dtype=torch.float32).to(device)
 
 
     #Criterion_list[0] => Cross Entropy Loss
@@ -334,7 +336,7 @@ def train_distill_context(epoch, train_loader, module_list, criterion_list, opti
     criterion_mse = criterion_list[2]
     criterion_sp = criterion_list[3]
     
-    softmax = nn.Softmax(dim=1).cuda()
+    softmax = nn.Softmax(dim=1).to(device)
     
 
     model_s = module_list[0]
@@ -357,8 +359,8 @@ def train_distill_context(epoch, train_loader, module_list, criterion_list, opti
 
         input = input.float()
         if torch.cuda.is_available():
-            input = input.cuda()
-            target = target.cuda()
+            input = input.to(device)
+            target = target.to(device)
   
         # ===================forward=====================
         preact = False
@@ -377,8 +379,9 @@ def train_distill_context(epoch, train_loader, module_list, criterion_list, opti
 
         #TODO: not needed when no interventions are used
         for i in range( len(target) ):
-            context_new[target[i]] = context_new[target[i]]*( current_num[target[i]]/(current_num[target[i]]+soft_t[i][target[i]]) ) + fea_s[i]*(soft_t[i][target[i]]/(current_num[target[i]]+soft_t[i][target[i]]) )
-            current_num[target[i]]+=soft_t[i][target[i]]
+            import ipdb; ipdb.set_trace()
+            context_new[target[i]] = context_new[target[i]]*( current_num[target[i]]/(current_num[target[i]]+soft_t[i][target[i]]) ) + fea_s[i]*(soft_t[i][target[i]]/(current_num[target[i]]+soft_t[i][target[i]]) )    
+            current_num[target[i]]+= soft_t[i][target[i]]
         
         #P.V: different to init train START
 
@@ -488,8 +491,8 @@ def validate(val_loader, model, criterion, opt):
             target = data[1]
             input = input.float()
             if torch.cuda.is_available():
-                input = input.cuda()
-                target = target.cuda()
+                input = input.to(device)
+                target = target.to(device)
 
             # compute output
             output = model(input)
@@ -517,7 +520,7 @@ def validate_st_no_int(val_loader, model, opt):
     top1_new = AverageMeter()
     top5_new = AverageMeter()
     
-    softmax = nn.Softmax(dim=1).cuda()
+    softmax = nn.Softmax(dim=1).to(device)
 
     # switch to evaluate mode
     model.eval()
@@ -529,8 +532,8 @@ def validate_st_no_int(val_loader, model, opt):
             target = data[1]
             input = input.float()
             if torch.cuda.is_available():
-                input = input.cuda()
-                target = target.cuda()
+                input = input.to(device)
+                target = target.to(device)
                 
 
             # compute output
@@ -563,7 +566,7 @@ def validate_st(val_loader, model, criterion, opt, context, model_fc_new):
     top1_new = AverageMeter()
     top5_new = AverageMeter()
     
-    softmax = nn.Softmax(dim=1).cuda()
+    softmax = nn.Softmax(dim=1).to(device)
 
     # switch to evaluate mode
     model.eval()
@@ -576,8 +579,8 @@ def validate_st(val_loader, model, criterion, opt, context, model_fc_new):
             target = data[1]
             input = input.float()
             if torch.cuda.is_available():
-                input = input.cuda()
-                target = target.cuda()
+                input = input.to(device)
+                target = target.to(device)
                 
 
             # compute output

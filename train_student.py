@@ -36,9 +36,9 @@ def parse_option():
     parser.add_argument('--tb_freq', type=int, default=100, help='tb frequency')
     parser.add_argument('--save_freq', type=int, default=50, help='save frequency')
     parser.add_argument('--batch_size', type=int, default=64, help='batch_size')
-    parser.add_argument('--num_workers', type=int, default=8, help='num of workers to use')
+    parser.add_argument('--num_workers', type=int, default=4, help='num of workers to use')
     parser.add_argument('--epochs', type=int, default=100, help='number of training epochs')
-    parser.add_argument('--init_epochs', type=int, default=10, help='init training for methods')
+    parser.add_argument('--init_epochs', type=int, default=0, help='init training for methods')
 
     # optimization
     parser.add_argument('--learning_rate', type=float, default=0.003, help='learning rate')
@@ -129,7 +129,6 @@ def load_teacher(model_path, n_cls):
         model.load_state_dict(torch.load(model_path)['model'])
     else: 
         model.load_state_dict(torch.load(model_path, map_location="cpu")["model"])
-    print('==> done')
     return model
 
 def main_train_no_int(opt):
@@ -275,7 +274,7 @@ def main_train_no_int(opt):
 
 def main_normal_train(opt):
     
-    
+    print("USING INT")
     best_acc = 0
 
     #opt = parse_option()
@@ -332,6 +331,7 @@ def main_normal_train(opt):
         #TODO: remove, just for debugging and understanding purposes
         print(Cs_h)
         print(Cs_h * 2)
+        import ipdb; ipdb.set_trace()
         model_s_fc_new = Reg( Cs_h*2, n_cls)
         
         module_list.append(model_s_fc_new)
